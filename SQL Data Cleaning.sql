@@ -7,7 +7,7 @@ ORDER BY 2;
 
 --Standardize Date Format
 
-SELECT SaleDateConvert, CONVERT(date,SaleDate)
+SELECT SaleDate, CONVERT(date,SaleDate)
 FROM NashvilleHousing
 
 UPDATE NashvilleHousing
