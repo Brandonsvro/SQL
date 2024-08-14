@@ -63,8 +63,8 @@ SELECT EXTRACT(YEAR FROM date) AS year,
 FROM sales_table
 GROUP BY 1;
 
---Step 4: Menghitung total penjualan dan kuantitas produk terjual setiap bulannya
---Tujuan: Menilai tren dan fluktuasi penjualan dan kuantitas produk terjual setiap bulannya di tahun 2021 dan 2020 untuk pembanding
+--Step 4: Menghitung tren penjualan setiap bulannya
+--Tujuan: Menilai tren dan fluktuasi penjualan dan kuantitas produk terjual setiap bulannya di tahun 2021
 
 	--Hitung total dan pertumbuhan penjualan dan kuantitas produk terjual setiap bulannya untuk tahun 2020 dan 2021
 WITH mom_sales AS(
@@ -95,8 +95,8 @@ SELECT year,
 		ROUND(AVG(qty_momgrowth)OVER(PARTITION BY year),1) AS avg_momgrowth_sales
 FROM mom_sales;
 
---Step 5: Menghitung penjualan dan kuantitas produk terjual berdasarkan setiap kategori produk
---Tujuan: Menilai performa penjualan tiap kategori produk
+--Step 5: Menghitung performa penjualan berdasarkan Product Category
+--Tujuan: Menilai performa penjualan tiap kategori produk secara menyeluruh
 
 	--Menghitung penjualan dan kuantitas produk terjual tiap kategori produk tahun 2020 untuk pembanding
 WITH category_sales2020 AS( 
@@ -108,8 +108,8 @@ WITH category_sales2020 AS(
 	GROUP BY 1
 ),
 
-	--Menghitung penjualan, kuantitas produk terjual, dan trx(keperluan perhitungan AOV) tiap kategori produk tahun 2021
-category_sales2021 AS( --Agregrasi data setiap kategori produk di tahun 2021
+	--Menghitung penjualan, kuantitas produk terjual, dan trx(keperluan perhitungan AOV & Avg Order Qty) tiap kategori produk tahun 2021
+category_sales2021 AS(
 	SELECT categoryname,
 		COUNT(orderid) AS trx2021,
 		SUM(totalsales) AS sales2021,
@@ -119,7 +119,7 @@ category_sales2021 AS( --Agregrasi data setiap kategori produk di tahun 2021
 	GROUP BY 1
 )
 
-	--Menggabungkan hasil perhitungan tahun 2020 dan 2021 untuk performa penjualan tiap kategori produk secara lengkap
+	--Menggabungkan hasil perhitungan tahun 2020 dan 2021 untuk performa penjualan tiap kategori produk secara menyeluruh
 SELECT a.categoryname,
 		--Total Sales, YoY Growth, dan rata-rata nilai transaksi per order setiap kategori produk
 		ROUND(sales2021) AS total_sales,
@@ -133,9 +133,12 @@ FROM category_sales2021 as a
 JOIN category_sales2020 as b USING(categoryname)
 ORDER BY 2 DESC;
 
---Menghitung data total penjualan dan kuantitas serta pertumbuhannya untuk setiap produk disetiap kategori
 
-WITH product_sales2020 AS( --Agregasi data setiap kategori produk di tahun 2020 untuk pembanding
+--Step 6: Menghitung performa penjualan berdasarkan item produk
+--Tujuan: Mengetahui 5 produk item yang memiliki performa penjualan terbaik disetiap kategorinya
+
+	--Menghitung penjualan dan kuantitas produk terjual tiap item produk tahun 2020 untuk pembanding
+WITH product_sales2020 AS( 
 	SELECT prodname,
 			categoryname,
 		SUM(totalsales) AS sales2020,
@@ -145,7 +148,8 @@ WITH product_sales2020 AS( --Agregasi data setiap kategori produk di tahun 2020 
 	GROUP BY 1,2
 ),
 
-product_sales2021 AS( --Agregrasi data setiap kategori produk di tahun 2021
+	--Menghitung penjualan, kuantitas produk terjual, trx(keperluan perhitungan AOV & Avg Order Qty), memperingkat berdasarkan penjualan, untuk tiap item produk tahun 2021
+product_sales2021 AS( 
 	SELECT prodname,
 			categoryname,
 		COUNT(orderid) AS trx2021,
@@ -157,8 +161,7 @@ product_sales2021 AS( --Agregrasi data setiap kategori produk di tahun 2021
 	GROUP BY 1,2
 )
 
---Agregasi data total penjualan dan kuantitas serta pertumbuhan setiap kategori
-
+	--Menggabungkan hasil perhitungan tahun 2020 dan 2021 untuk performa penjualan top 5 item produk ditiap kategori secara lengkap
 SELECT a.prodname,
 		a.categoryname,
 		a.rank,
@@ -173,13 +176,10 @@ JOIN product_sales2020 as b USING(prodname)
 WHERE rank BETWEEN 1 AND 5
 ORDER BY 2,3;
 
+--Step 7: Menghitung performa penjualan berdasarkan Customer State
+--Tujuan: Menilai performa penjualan tiap kategori produk secara menyeluruh
 
-
-'''
-Mengevaluasi performa penjualan dan jumlah produk terjual
-berdasarkan customer state
-'''
-
+	--Menghitung penjualan dan kuantitas produk terjual tiap customer state tahun 2020 untuk pembanding
 WITH state_sales2020 AS( --Agregasi data setiap state di tahun 2020 untuk pembanding
 	SELECT customerstate,
 		SUM(totalsales) AS sales2020,
@@ -189,7 +189,8 @@ WITH state_sales2020 AS( --Agregasi data setiap state di tahun 2020 untuk pemban
 	GROUP BY 1
 ),
 
-state_sales2021 AS( --Agregrasi data setiap state di tahun 2021
+	--Menghitunhg penjualan, kuantitas produk terjual, trx(keperluan perhitungan AOV & Avg Order Qty), dan total customer tiap customer state tahun 2021
+state_sales2021 AS(
 	SELECT customerstate,
 		COUNT(orderid) AS trx2021,
 		SUM(totalsales) AS sales2021,
