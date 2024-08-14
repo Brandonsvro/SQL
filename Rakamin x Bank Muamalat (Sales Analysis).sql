@@ -176,8 +176,8 @@ JOIN product_sales2020 as b USING(prodname)
 WHERE rank BETWEEN 1 AND 5
 ORDER BY 2,3;
 
---Step 7: Menghitung performa penjualan berdasarkan Customer State
---Tujuan: Menilai performa penjualan tiap kategori produk secara menyeluruh
+--Step 7: Menghitung performa penjualan berdasarkan customer state
+--Tujuan: Menilai performa penjualan tiap  customer state secara menyeluruh
 
 	--Menghitung penjualan dan kuantitas produk terjual tiap customer state tahun 2020 untuk pembanding
 WITH state_sales2020 AS( --Agregasi data setiap state di tahun 2020 untuk pembanding
@@ -201,8 +201,7 @@ state_sales2021 AS(
 	GROUP BY 1
 )
 
---Agregasi data total penjualan dan kuantitas serta pertumbuhan setiap state
-
+	--Menggabungkan hasil perhitungan tahun 2020 dan 2021 untuk performa penjualan tiap customer state secara lengkap
 SELECT a.customerstate,
 		ROUND(sales2021) AS total_sales,
 		ROUND(((sales2021-sales2020)/sales2020)*100,1) AS sales_yoygrowth,
@@ -215,3 +214,4 @@ SELECT a.customerstate,
 FROM state_sales2021 as a
 JOIN state_sales2020 as b USING(customerstate)
 ORDER BY 2 DESC;
+ 
