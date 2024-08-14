@@ -1,17 +1,16 @@
-'''Mengeksplor setiap table yang ada di Dataset'''
-
+--Step 1: Eksplorasi dataset
+--Tujuan: Untuk memahami setiap ada yang ada pada Sales Dataset 2020-2021 
+	
 SELECT * FROM customers;
 SELECT * FROM orders;
 SELECT * FROM product_category;
 SELECT * FROM products;
 
-'''
-Setelah memahami data yang dimiliki, kemudian menentukan data-data yang diperlukan
-dan menggabungkannya menjadi satu untuk mempermudah analisis
-'''
+--Step 2: Menggabungkan berbagai data yang dibutuhkan
+--Tujuan: Membuat tabel utama yang berisi berbagai data yang dibutuhkan untuk analisis performa penjualan 
 	
-DROP TABLE IF EXISTS sales_table; --Melakukan cek nama table untuk menghindari duplikasi
-CREATE TABLE sales_table AS --Menggabungkan keseluruhan data pada table: sales_table
+DROP TABLE IF EXISTS sales_table;
+CREATE TABLE sales_table AS
 	SELECT	o.customerid,
 			c.customercity,
 			c.customerstate,
@@ -29,12 +28,12 @@ CREATE TABLE sales_table AS --Menggabungkan keseluruhan data pada table: sales_t
 	JOIN product_category AS pc
 		ON p.category = pc.categoryid;
 
-'''
-Menghitung Key Matrics
-'''
---Merangkum data key metrics 2020 untuk pembanding
-	
-WITH data_2020 AS(
+
+--Step 3: Membuat Key Metrics penjualan
+--Tujuan: Menghitung Key Metrics (Total Sales, Trx, Qty Product Sold, Customers) untuk menilai performa penjualan secara umum
+
+	--Menghitung Key Metrics penjualan tahun 2020 untuk pembanding
+WITH data_2020 AS( 
 	SELECT CAST(SUM (totalsales) AS NUMERIC) AS totalsales_2020,
 		CAST(COUNT(orderid) AS NUMERIC) AS totaltrx_2020,
 		CAST(SUM(quantity) AS NUMERIC) AS totalqty_2020,
@@ -44,30 +43,30 @@ WITH data_2020 AS(
 	WHERE EXTRACT(YEAR FROM DATE) = 2020
 )
 
---Key Metrics
-	
+	--Menghitung Key Metrics penjualan tahun 2021 dan pertumbuhannya (YoY)
 SELECT EXTRACT(YEAR FROM date) AS year,
-		SUM (totalsales) AS total_sales, --Total Sales
-		ROUND(((SUM (totalsales)-(SELECT totalsales_2020 FROM data_2020))/(SELECT totalsales_2020 FROM data_2020))*100,1) AS sales_yoy, --YoY Sales Growth
-		COUNT(orderid) AS total_trx, --Total Transaction
+		--Total Sales dan YoY Growth
+		SUM (totalsales) AS total_sales,
+		ROUND(((SUM (totalsales)-(SELECT totalsales_2020 FROM data_2020))/(SELECT totalsales_2020 FROM data_2020))*100,1) AS sales_yoy,
+		--Total Trx dan YoY Growth
+		COUNT(orderid) AS total_trx,
 		ROUND(((COUNT (orderid)-(SELECT totaltrx_2020 FROM data_2020))/(SELECT totaltrx_2020 FROM data_2020))*100,1) AS trx_yoy, --YoY Transaction Growth
-		SUM(quantity) AS total_qty, --Total Product Sold
+		--Total Product Sold dan YoY Growth
+		SUM(quantity) AS total_qty,
 		ROUND(((SUM (quantity)-(SELECT totalqty_2020 FROM data_2020))/(SELECT totalqty_2020 FROM data_2020))*100,1) AS qty_yoy, --YoY Product Sold Growth
-		COUNT(DISTINCT(customerid)) AS total_cust, --Total Customer
+		--Total Customers dan YoY Growth
+		COUNT(DISTINCT(customerid)) AS total_cust,
 		ROUND(((COUNT(DISTINCT(customerid))-(SELECT totalcust_2020 FROM data_2020))/(SELECT totalcust_2020 FROM data_2020))*100,1) AS cust_yoy, --YoY Customer Growth
-		ROUND(SUM(totalsales)/COUNT(orderid)) as AOV, --AOV
+		--AOV dan YoY Growth
+		ROUND(SUM(totalsales)/COUNT(orderid)) as AOV,
 		ROUND((((SUM(totalsales)/COUNT(orderid))-(SELECT AOV2020 FROM data_2020))/(SELECT AOV2020 FROM data_2020))*100,1) as AOV_yoy --YoY AOV Growth
 FROM sales_table
 GROUP BY 1;
 
+--Step 4: Menghitung total penjualan dan kuantitas produk terjual setiap bulannya
+--Tujuan: Menilai tren dan fluktuasi penjualan dan kuantitas produk terjual setiap bulannya di tahun 2021 dan 2020 untuk pembanding
 
-'''
-Menghitung tren penjualan dan jumlah produk terjual 
-serta pertumbuhan setiap bulannya
-'''
-
---Menghitung total sales dan qty per bulan, dan pertumbuhan sales dan qty per bulan
-
+	--Hitung total dan pertumbuhan penjualan dan kuantitas produk terjual setiap bulannya untuk tahun 2020 dan 2021
 WITH mom_sales AS(
 	SELECT year,
 			month,
@@ -85,8 +84,7 @@ WITH mom_sales AS(
 	ORDER BY 1,2) as mom_sales_raw
 )
 
---Menghitung rata-rata pertumbuhan penjualan dan qty perbulannya 
-
+	--Menghitung rata-rata pertumbuhan MoM penjualan dan kuantitas produk terjual untuk tahun 2020 dan 2021 dari hasil perhitungan sebelumnya
 SELECT year,
 		month,
 		total_sales,
@@ -97,13 +95,11 @@ SELECT year,
 		ROUND(AVG(qty_momgrowth)OVER(PARTITION BY year),1) AS avg_momgrowth_sales
 FROM mom_sales;
 
+--Step 5: Menghitung penjualan dan kuantitas produk terjual berdasarkan setiap kategori produk
+--Tujuan: Menilai performa penjualan tiap kategori produk
 
-'''
-Mengevaluasi performa penjualan dan jumlah produk terjual
-berdasarkan kategori produk
-'''
-
-WITH category_sales2020 AS( --Agregasi data setiap kategori produk di tahun 2020 untuk pembanding
+	--Menghitung penjualan dan kuantitas produk terjual tiap kategori produk tahun 2020 untuk pembanding
+WITH category_sales2020 AS( 
 	SELECT categoryname,
 		SUM(totalsales) AS sales2020,
 		SUM(quantity) AS qty2020
@@ -112,6 +108,7 @@ WITH category_sales2020 AS( --Agregasi data setiap kategori produk di tahun 2020
 	GROUP BY 1
 ),
 
+	--Menghitung penjualan, kuantitas produk terjual, dan trx(keperluan perhitungan AOV) tiap kategori produk tahun 2021
 category_sales2021 AS( --Agregrasi data setiap kategori produk di tahun 2021
 	SELECT categoryname,
 		COUNT(orderid) AS trx2021,
@@ -122,12 +119,13 @@ category_sales2021 AS( --Agregrasi data setiap kategori produk di tahun 2021
 	GROUP BY 1
 )
 
---Agregasi data total penjualan dan kuantitas serta pertumbuhan setiap kategori
-
+	--Menggabungkan hasil perhitungan tahun 2020 dan 2021 untuk performa penjualan tiap kategori produk secara lengkap
 SELECT a.categoryname,
+		--Total Sales, YoY Growth, dan rata-rata nilai transaksi per order setiap kategori produk
 		ROUND(sales2021) AS total_sales,
 		ROUND(((sales2021-sales2020)/sales2020)*100,1) AS sales_yoygrowth,
 		ROUND(sales2021/trx2021) AS AOV,
+		--Total Kuantitas Produk Terjual, YoY Growth, dan rata-rata kuantitas per order setiap kategori produk
 		qty2021 AS total_qty,
 		ROUND(((qty2021-qty2020)/qty2020::NUMERIC)*100,1) AS qty_yoygrowth,
 		ROUND(qty2021::NUMERIC/trx2021) AS avg_order_qty	
